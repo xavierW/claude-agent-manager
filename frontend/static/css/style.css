@@ -423,27 +423,60 @@ pre:hover .open-canvas-btn,
     background: var(--bg-primary);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
     overflow: hidden;
     z-index: 100;
-    max-height: 260px;
+    max-height: 400px;
     overflow-y: auto;
 }
 
 #slash-menu.hidden { display: none; }
 
+.slash-category {
+    padding: 8px 14px 4px;
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    border-top: 1px solid var(--border);
+}
+
+.slash-category:first-child { border-top: none; }
+
 .slash-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 14px;
+    padding: 9px 14px;
     cursor: pointer;
     font-size: 0.85em;
     transition: background 0.1s;
 }
 
 .slash-item:hover { background: var(--accent-light); }
-.slash-item.selected { background: var(--accent-light); }
+.slash-item.selected {
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    padding-left: 11px;
+}
+
+.slash-item .slash-cmd {
+    font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+    font-size: 0.75em;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.slash-item .slash-desc {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
 
 .slash-icon {
     width: 28px; height: 28px;

@@ -92,7 +92,10 @@ class ChatUI {
     _showSlash(query) {
         this._slashMenu.classList.remove('hidden');
         const items = this._slashMenu.querySelectorAll('.slash-item');
+        const categories = this._slashMenu.querySelectorAll('.slash-category');
         let visible = 0;
+        let prevCategory = null;
+
         items.forEach((item, i) => {
             const cmd = item.dataset.cmd;
             if (query === '/' || cmd.startsWith(query)) {
@@ -103,6 +106,21 @@ class ChatUI {
                 item.style.display = 'none';
             }
         });
+
+        // Hide/show category headers based on visible items
+        categories.forEach(cat => {
+            let el = cat.nextElementSibling;
+            let hasVisible = false;
+            while (el && !el.classList.contains('slash-category')) {
+                if (el.classList.contains('slash-item') && el.style.display !== 'none') {
+                    hasVisible = true;
+                    break;
+                }
+                el = el.nextElementSibling;
+            }
+            cat.style.display = hasVisible ? 'block' : 'none';
+        });
+
         this._slashIndex = visible > 0 ? 0 : -1;
     }
 
