@@ -8,6 +8,7 @@
 </head>
 <body>
     <div id="app">
+        <!-- Left Sidebar -->
         <aside id="sidebar">
             <div class="sidebar-header">
                 <h1>Claude Chat</h1>
@@ -19,6 +20,8 @@
                 <span id="connection-text">Disconnected</span>
             </div>
         </aside>
+
+        <!-- Center: Conversation -->
         <main id="main-content">
             <div id="chat-container">
                 <div id="empty-state">
@@ -28,17 +31,54 @@
                 </div>
                 <div id="chat-messages" class="hidden"></div>
             </div>
+
+            <!-- Suggested follow-ups -->
+            <div id="suggested-followups" class="hidden"></div>
+
+            <!-- Slash command popup -->
+            <div id="slash-menu" class="hidden">
+                <div class="slash-item" data-cmd="/help"><span class="slash-icon">?</span>Help me understand...</div>
+                <div class="slash-item" data-cmd="/code"><span class="slash-icon">&lt;/&gt;</span>Write code to...</div>
+                <div class="slash-item" data-cmd="/fix"><span class="slash-icon">&#9881;</span>Fix this error...</div>
+                <div class="slash-item" data-cmd="/explain"><span class="slash-icon">&#128161;</span>Explain how...</div>
+                <div class="slash-item" data-cmd="/summarize"><span class="slash-icon">&#9776;</span>Summarize this...</div>
+                <div class="slash-item" data-cmd="/test"><span class="slash-icon">&#10003;</span>Write tests for...</div>
+            </div>
+
+            <!-- Input area -->
             <div id="input-area" class="hidden">
+                <div id="file-previews"></div>
                 <div class="input-wrapper">
                     <textarea id="prompt-input"
-                              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-                              rows="1"></textarea>
+                        placeholder="Type a message or / for commands... (Shift+Enter for new line)"
+                        rows="1"></textarea>
                     <button id="send-btn" class="btn-primary" disabled>Send</button>
                     <button id="stop-btn" class="btn-stop hidden" title="Stop generating">&#9632;</button>
                 </div>
-                <div class="input-hint">Powered by Claude Agent SDK</div>
+                <div class="input-hint">/ for commands &middot; Powered by Claude Agent SDK</div>
             </div>
         </main>
+
+        <!-- Right: Artifact Canvas -->
+        <aside id="canvas-panel" class="hidden">
+            <div class="canvas-header">
+                <div class="canvas-tabs" id="canvas-tabs"></div>
+                <div class="canvas-actions">
+                    <button id="canvas-copy" title="Copy">&#128203;</button>
+                    <button id="canvas-fullscreen" title="Fullscreen">&#9974;</button>
+                    <button id="canvas-close" title="Close">&times;</button>
+                </div>
+            </div>
+            <div id="canvas-content">
+                <div id="canvas-empty">
+                    <div class="canvas-empty-icon">&#128196;</div>
+                    <p>Click "Open in Canvas" on any code block or artifact to view it here.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Canvas resize handle -->
+        <div id="canvas-resize-handle" class="hidden"></div>
     </div>
 
     <script src="/js/markdown.js"></script>

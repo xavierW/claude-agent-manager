@@ -34,6 +34,8 @@ class App {
         EventBus.on('delete-session', (id) => this._ws.send({ type: 'delete_session', session_id: id }));
         EventBus.on('send-prompt', (prompt) => this._sendQuery(prompt));
         EventBus.on('interrupt', () => this._interrupt());
+        EventBus.on('regenerate', () => this._regenerate());
+        EventBus.on('open-canvas', (data) => this._chatUI.openCanvas(data.content, data.language, data.title));
     }
 
     _onMessage(data) {
@@ -165,6 +167,7 @@ class App {
         if (data.session_id !== this._state.activeSessionId) return;
         this._chatUI.setStreaming(false);
         this._chatUI.finishMessage();
+        this._generateFollowups();
     }
 
     _handleError(data) {
@@ -172,6 +175,61 @@ class App {
         this._chatUI.setStreaming(false);
         this._chatUI.finishMessage();
         this._chatUI.addError(data.message || 'Unknown error');
+    }
+
+    _regenerate() {
+        const sid = this._state.activeSessionId;
+        if (!sid) return;
+        const msgs = this._state.messages[sid];
+        if (!msgs || msgs.length < 2) return;
+        // Remove last assistant message + last user message from local state
+        while (msgs.length > 0 && msgs[msgs.length - 1].role !== 'user') {
+            msgs.pop();
+        }
+        const lastUser = msgs.pop(); // remove user message
+        if (lastUser) {
+            // Re-send the last user prompt
+            this._sendQuery(lastUser.content);
+        }
+    }
+
+    _generateFollowups() {
+        const sid = this._state.activeSessionId;
+        if (!sid) return;
+        const msgs = this._state.messages[sid];
+        if (!msgs || msgs.length === 0) return;
+
+        // Simple heuristic: extract key terms and create follow-up suggestions
+        const lastAssistant = msgs.filter(m => m.role !== 'user').slice(-1)[0];
+        if (!lastAssistant) return;
+
+        const text = this._extractText(lastAssistant).toLowerCase();
+        const suggestions = [];
+
+        if (text.includes('```') || text.includes('code') || text.includes('function')) {
+            suggestions.push('Explain this code line by line');
+            suggestions.push('Add error handling to this');
+        }
+        if (text.includes('error') || text.includes('bug') || text.includes('fix')) {
+            suggestions.push('Show me other potential issues');
+            suggestions.push('Write tests to prevent this');
+        }
+        if (text.length > 200) {
+            suggestions.push('Summarize this in 3 bullet points');
+        }
+        suggestions.push('Can you elaborate on this?');
+        suggestions.push('Show me an alternative approach');
+
+        this._chatUI.showFollowups(suggestions.slice(0, 4));
+    }
+
+    _extractText(msg) {
+        if (typeof msg.content === 'string') return msg.content;
+        if (msg.type === 'assistant' && msg.blocks) {
+            return msg.blocks.filter(b => b.type === 'text').map(b => b.text).join(' ');
+        }
+        if (msg.type === 'text') return msg.text;
+        return '';
     }
 }
 
