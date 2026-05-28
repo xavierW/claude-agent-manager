@@ -1,0 +1,180 @@
+const EventBus = {
+    _listeners: {},
+    on(event, fn) {
+        (this._listeners[event] = this._listeners[event] || []).push(fn);
+    },
+    emit(event, data) {
+        (this._listeners[event] || []).forEach(fn => fn(data));
+    }
+};
+
+class App {
+    constructor() {
+        this._state = {
+            sessions: [],
+            activeSessionId: null,
+            messages: {},
+            connected: false
+        };
+
+        this._ws = new WSClient(this._onMessage.bind(this));
+        this._sessionPanel = new SessionPanel(document.getElementById('session-list'));
+        this._chatUI = new ChatUI(document.getElementById('chat-container'));
+
+        this._setupEvents();
+        this._ws.connect();
+    }
+
+    _setupEvents() {
+        document.getElementById('new-session-btn').addEventListener('click', () => {
+            this._ws.send({ type: 'create_session' });
+        });
+
+        EventBus.on('select-session', (id) => this._selectSession(id));
+        EventBus.on('delete-session', (id) => this._ws.send({ type: 'delete_session', session_id: id }));
+        EventBus.on('send-prompt', (prompt) => this._sendQuery(prompt));
+        EventBus.on('interrupt', () => this._interrupt());
+    }
+
+    _onMessage(data) {
+        switch (data.type) {
+            case 'connection_state': return this._handleConnection(data);
+            case 'sessions': return this._handleSessions(data);
+            case 'session_created': return this._handleSessionCreated(data);
+            case 'session_deleted': return this._handleSessionDeleted(data);
+            case 'session_history': return this._handleHistory(data);
+            case 'text': return this._handleText(data);
+            case 'thinking': return this._handleThinking(data);
+            case 'tool_use': return this._handleToolUse(data);
+            case 'tool_result': return this._handleToolResult(data);
+            case 'assistant': return this._handleAssistant(data);
+            case 'result': return this._handleResult(data);
+            case 'done': return this._handleDone(data);
+            case 'error': return this._handleError(data);
+        }
+    }
+
+    _handleConnection(data) {
+        this._state.connected = data.state === 'connected';
+        const el = document.getElementById('connection-indicator');
+        const txt = document.getElementById('connection-text');
+        if (el) {
+            el.className = this._state.connected ? 'connected' : 'disconnected';
+            txt.textContent = this._state.connected ? 'Connected' : 'Disconnected';
+        }
+        if (this._state.connected) {
+            this._ws.send({ type: 'list_sessions' });
+        }
+    }
+
+    _handleSessions(data) {
+        this._state.sessions = data.sessions;
+        this._sessionPanel.render(data.sessions);
+        if (this._state.activeSessionId) {
+            this._sessionPanel.setActive(this._state.activeSessionId);
+        }
+    }
+
+    _handleSessionCreated(data) {
+        this._ws.send({ type: 'list_sessions' });
+    }
+
+    _handleSessionDeleted(data) {
+        if (this._state.activeSessionId === data.session_id) {
+            this._state.activeSessionId = null;
+            delete this._state.messages[data.session_id];
+            this._chatUI.showEmpty();
+        }
+        this._ws.send({ type: 'list_sessions' });
+    }
+
+    _selectSession(id) {
+        this._state.activeSessionId = id;
+        this._sessionPanel.setActive(id);
+        const msgs = this._state.messages[id];
+        if (msgs) {
+            this._chatUI.showSession(id, msgs);
+        } else {
+            this._ws.send({ type: 'get_history', session_id: id });
+        }
+        this._chatUI.focus();
+    }
+
+    _handleHistory(data) {
+        this._state.messages[data.session_id] = data.messages;
+        if (this._state.activeSessionId === data.session_id) {
+            this._chatUI.showSession(data.session_id, data.messages);
+        }
+    }
+
+    _sendQuery(prompt) {
+        const sid = this._state.activeSessionId;
+        if (!sid) return;
+
+        if (!this._state.messages[sid]) {
+            this._state.messages[sid] = [];
+        }
+        this._state.messages[sid].push({ role: 'user', content: prompt });
+
+        this._chatUI.addUserMessage(prompt);
+        this._chatUI.setStreaming(true);
+        this._ws.send({ type: 'query', session_id: sid, prompt });
+    }
+
+    _interrupt() {
+        const sid = this._state.activeSessionId;
+        if (sid) {
+            this._ws.send({ type: 'interrupt', session_id: sid });
+        }
+    }
+
+    _handleText(data) {
+        if (data.session_id !== this._state.activeSessionId) return;
+        this._chatUI.appendText(data.text);
+    }
+
+    _handleThinking(data) {
+        if (data.session_id !== this._state.activeSessionId) return;
+        this._chatUI.addThinkingBlock(data.thinking);
+    }
+
+    _handleToolUse(data) {
+        if (data.session_id !== this._state.activeSessionId) return;
+        this._chatUI.addToolUseBlock(data.name, data.input);
+    }
+
+    _handleToolResult(data) {
+        if (data.session_id !== this._state.activeSessionId) return;
+        this._chatUI.addToolResultBlock(data.content);
+    }
+
+    _handleAssistant(data) {
+        if (data.session_id !== this._state.activeSessionId) return;
+        const blocks = data.blocks || [];
+        const hasContent = blocks.some(b => b.type === 'text' || b.type === 'tool_use' || b.type === 'tool_result');
+        if (!hasContent) return; // partial signal, keep streaming
+        this._chatUI.setStreaming(false);
+        this._chatUI.renderMessage(blocks);
+    }
+
+    _handleResult(data) {
+        // ignore - just final usage info
+    }
+
+    _handleDone(data) {
+        if (data.session_id !== this._state.activeSessionId) return;
+        this._chatUI.setStreaming(false);
+        this._chatUI.finishMessage();
+    }
+
+    _handleError(data) {
+        console.error('Server error:', data);
+        this._chatUI.setStreaming(false);
+        this._chatUI.finishMessage();
+        this._chatUI.addError(data.message || 'Unknown error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    new App();
+});
