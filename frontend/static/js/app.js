@@ -49,6 +49,7 @@ class App {
             case 'thinking': return this._handleThinking(data);
             case 'tool_use': return this._handleToolUse(data);
             case 'tool_result': return this._handleToolResult(data);
+            case 'tool_input_delta': return this._handleToolInputDelta(data);
             case 'assistant': return this._handleAssistant(data);
             case 'result': return this._handleResult(data);
             case 'done': return this._handleDone(data);
@@ -152,6 +153,11 @@ class App {
     _handleToolResult(data) {
         if (data.session_id !== this._state.activeSessionId) return;
         this._chatUI.addToolResultBlock(data.content);
+    }
+
+    _handleToolInputDelta(data) {
+        if (data.session_id !== this._state.activeSessionId) return;
+        this._chatUI.showStatus('Preparing tool input...');
     }
 
     _handleAssistant(data) {

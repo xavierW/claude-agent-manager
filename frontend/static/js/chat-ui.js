@@ -332,7 +332,7 @@ class ChatUI {
     }
 
     addToolUseBlock(name, input) {
-        if (!this._currentAssistant) return;
+        if (!this._currentAssistant) this.startAssistantMessage();
         const el = document.createElement('div');
         el.className = 'tool-use';
         el.innerHTML = `<div class="tool-use-header">Tool: ${this._escape(name)}</div>
@@ -342,7 +342,7 @@ class ChatUI {
     }
 
     addToolResultBlock(content) {
-        if (!this._currentAssistant) return;
+        if (!this._currentAssistant) this.startAssistantMessage();
         const el = document.createElement('div');
         el.className = 'tool-result';
         el.textContent = content;
