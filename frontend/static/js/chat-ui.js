@@ -12,6 +12,7 @@ class ChatUI {
         this._currentAssistant = null;
         this._currentTextBlock = null;
         this._currentThinking = null;
+        this._currentStatus = null;
         this._isStreaming = false;
         this._slashIndex = -1;
 
@@ -253,6 +254,26 @@ class ChatUI {
 
     /* ========== Streaming ========== */
 
+    /* ========== Agent Status ========== */
+
+    showStatus(text) {
+        this.hideStatus();
+        this._currentStatus = document.createElement('div');
+        this._currentStatus.className = 'agent-status';
+        this._currentStatus.innerHTML = `<span class="agent-status-dot"></span>${this._escape(text)}`;
+        this._messagesEl.appendChild(this._currentStatus);
+        this._scrollBottom();
+    }
+
+    hideStatus() {
+        if (this._currentStatus) {
+            this._currentStatus.remove();
+            this._currentStatus = null;
+        }
+    }
+
+    /* ========== Streaming ========== */
+
     addUserMessage(text) {
         this._renderUserMessage(text);
         this._scrollBottom();
@@ -375,6 +396,7 @@ class ChatUI {
         this._currentAssistant = null;
         this._currentTextBlock = null;
         this._currentThinking = null;
+        this.hideStatus();
     }
 
     _finalizeThinking() {
@@ -388,17 +410,18 @@ class ChatUI {
 
     _addPostRenderHooks() {
         if (!this._currentAssistant) return;
-        // Open in Canvas buttons for code blocks
+        this._applyHighlight(this._currentAssistant);
         this._currentAssistant.querySelectorAll('pre').forEach(pre => {
             this._addCanvasButton(pre);
         });
-        // Copy + regenerate hover actions
         const text = this._currentAssistant.textContent || '';
         this._addMessageActions(this._currentAssistant, text);
+        this._addTimestamp(this._currentAssistant);
     }
 
     renderMessage(blocks) {
         if (!blocks || blocks.length === 0) return;
+        this.hideStatus();
         if (this._currentAssistant) {
             this._currentAssistant.remove();
             this._currentAssistant = null;
@@ -409,11 +432,21 @@ class ChatUI {
         for (const block of blocks) {
             this._appendBlock(el, block);
         }
-        // Post-render hooks
+        this._applyHighlight(el);
         const text = blocks.filter(b => b.type === 'text').map(b => b.text).join('');
         this._addMessageActions(el, text);
         el.querySelectorAll('pre').forEach(pre => this._addCanvasButton(pre));
+        this._addTimestamp(el);
         this._scrollBottom();
+    }
+
+    _applyHighlight(el) {
+        el.querySelectorAll('pre code').forEach(code => {
+            const lang = code.className.replace('language-', '');
+            if (lang) {
+                code.innerHTML = MarkdownRenderer._highlightTokens(code.textContent, lang);
+            }
+        });
     }
 
     setStreaming(v) {
@@ -543,6 +576,15 @@ class ChatUI {
         content.className = 'message-content';
         content.textContent = text;
         el.appendChild(content);
+        this._addTimestamp(el);
+    }
+
+    _addTimestamp(el) {
+        const ts = document.createElement('div');
+        ts.className = 'message-timestamp';
+        const now = new Date();
+        ts.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        el.appendChild(ts);
     }
 
     _renderAssistantMessage(msg) {
@@ -551,9 +593,11 @@ class ChatUI {
             for (const block of msg.blocks) {
                 this._appendBlock(el, block);
             }
+            this._applyHighlight(el);
             const text = msg.blocks.filter(b => b.type === 'text').map(b => b.text).join('');
             this._addMessageActions(el, text);
             el.querySelectorAll('pre').forEach(pre => this._addCanvasButton(pre));
+            this._addTimestamp(el);
             return;
         }
         if (msg.type === 'text') {
@@ -562,8 +606,10 @@ class ChatUI {
             content.className = 'message-content';
             content.innerHTML = MarkdownRenderer.render(msg.text);
             el.appendChild(content);
+            this._applyHighlight(el);
             this._addMessageActions(el, msg.text);
             el.querySelectorAll('pre').forEach(pre => this._addCanvasButton(pre));
+            this._addTimestamp(el);
         }
     }
 

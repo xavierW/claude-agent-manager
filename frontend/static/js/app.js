@@ -120,6 +120,7 @@ class App {
 
         this._chatUI.addUserMessage(prompt);
         this._chatUI.setStreaming(true);
+        this._chatUI.showStatus('Processing...');
         this._ws.send({ type: 'query', session_id: sid, prompt });
     }
 
@@ -137,11 +138,14 @@ class App {
 
     _handleThinking(data) {
         if (data.session_id !== this._state.activeSessionId) return;
+        this._chatUI.showStatus('Thinking...');
         this._chatUI.addThinkingBlock(data.thinking);
     }
 
     _handleToolUse(data) {
         if (data.session_id !== this._state.activeSessionId) return;
+        const toolNames = { Read: 'Reading files...', Write: 'Writing file...', Edit: 'Editing file...', Bash: 'Executing command...', Glob: 'Searching files...', WebFetch: 'Fetching URL...', WebSearch: 'Searching web...' };
+        this._chatUI.showStatus(toolNames[data.name] || `Running ${data.name}...`);
         this._chatUI.addToolUseBlock(data.name, data.input);
     }
 
